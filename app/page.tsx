@@ -22,6 +22,31 @@ export default function Home(){
  function onDragLeave(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();setDragging(false)}
 
  function textX(x:number,w:number,align:"left"|"center"|"right",text:string,font:any,size:number){const tw=font.widthOfTextAtSize(text,size);if(align==="center")return x+(w-tw)/2;if(align==="right")return x+w-tw-mm(5);return x+mm(5)}
+ async function printLabels(){
+   if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
+   if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
+   setMessage("Druckansicht wird vorbereitet …");
+   const printWindow=window.open("","_blank","width=1000,height=800");
+   if(!printWindow){setMessage("Druckfenster wurde blockiert. Bitte Pop-ups für diese Seite erlauben.");return}
+   try{
+     const items=await Promise.all(rows.map(async row=>{
+       const value=String(row[qrCol]??"");if(!value)return "";
+       const qr=await QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"});
+       const name=showName&&nameCol?String(row[nameCol]??""):"";
+       const location=showLocation&&locationCol?String(row[locationCol]??""):"";
+       const align=textAlign==="left"?"left":textAlign==="right"?"right":"center";
+       const qrTopPx=Math.max(0,qrTop+qrYOffset);
+       const qrLeft="calc(50% + "+qrXOffset+"mm)";
+       const textTransform="translate("+textXOffset+"mm, "+textYOffset+"mm)";
+       return "<div class=\"label\" style=\"width:"+labelW+"mm;height:"+labelH+"mm\"><img class=\"qr\" src=\""+qr+"\" style=\"width:"+qrSize+"mm;top:"+qrTopPx+"mm;left:"+qrLeft+";transform:translateX(-50%)\"/><div class=\"texts\" style=\"text-align:"+align+";transform:"+textTransform+";margin-top:"+((qrSize+qrTop+qrYOffset+textGap))+"mm\"><div class=\"title\" style=\"font-size:"+titleSize+"pt;font-weight:"+(boldTitle?700:400)+"\">"+escapeHtml(value.slice(0,60))+"</div>"+(name?"<div class=\"detail\" style=\"font-size:"+detailSize+"pt\">"+escapeHtml(name.slice(0,60))+"</div>":"")+(location?"<div class=\"detail\" style=\"font-size:"+detailSize+"pt\">"+escapeHtml(location.slice(0,60))+"</div>":"")+"</div></div>";
+     }));
+     printWindow.document.open();
+     printWindow.document.write("<!doctype html><html><head><title>QR Generator47 – Etiketten</title><style>@page{size:A4;margin:10mm}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}body{font-family:Arial,sans-serif}.sheet{display:grid;grid-template-columns:repeat("+Math.max(1,cols)+","+labelW+"mm);gap:4mm;align-content:start}.label{position:relative;overflow:hidden;border:.2mm solid #c7d2da;page-break-inside:avoid}.qr{position:absolute;object-fit:contain}.texts{position:absolute;left:5mm;right:5mm;top:0;line-height:1.15}.title,.detail{overflow-wrap:anywhere}.detail{margin-top:2mm}@media print{body{margin:0}.label{border-color:#d0d8dd}}</style></head><body><div class=\"sheet\">"+items.join("")+"</div><script>window.onload=function(){setTimeout(function(){window.focus();window.print()},300)}<\/script></body></html>");
+     printWindow.document.close();
+     setMessage("Druckdialog geöffnet – Drucker auswählen und drucken.");
+   }catch(e){console.error(e);printWindow.close();setMessage("Drucken konnte nicht vorbereitet werden.")}
+ }
+ function escapeHtml(value:string){return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\x27/g,"&#039;")}
  async function makePdf(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
    const pageW=mm(210),pageH=mm(297),margin=mm(10),gap=mm(4),perRow=Math.max(1,cols);
@@ -80,7 +105,7 @@ export default function Home(){
  <label className="text-sm font-semibold">Name-Spalte<select value={nameCol} onChange={e=>setNameCol(e.target.value)} className="mt-2 w-full rounded-xl border p-3 font-normal">{headers.map(h=><option key={h}>{h}</option>)}</select></label>
  <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={showLocation} onChange={e=>setShowLocation(e.target.checked)}/> Standort anzeigen</label>
  <label className="text-sm font-semibold">Standort-Spalte<select value={locationCol} onChange={e=>setLocationCol(e.target.value)} className="mt-2 w-full rounded-xl border p-3 font-normal">{headers.map(h=><option key={h}>{h}</option>)}</select></label>
- </div><button disabled={busy} onClick={makePdf} className="mt-7 w-full rounded-xl bg-sky-600 px-5 py-4 font-bold text-white hover:bg-sky-700 disabled:opacity-50">{busy?"PDF wird erstellt …":"📄 Druckfertiges PDF erstellen"}</button></div>}</section>
+ </div><div className="mt-7 grid gap-3 sm:grid-cols-2"><button disabled={busy} onClick={makePdf} className="w-full rounded-xl bg-sky-600 px-5 py-4 font-bold text-white hover:bg-sky-700 disabled:opacity-50">{busy?"PDF wird erstellt …":"📄 Druckfertiges PDF erstellen"}</button><button disabled={busy} onClick={printLabels} className="w-full rounded-xl bg-slate-900 px-5 py-4 font-bold text-white hover:bg-slate-800 disabled:opacity-50">🖨️ Direkt drucken</button></div></div>}</section>
  <aside className="card h-fit p-6 lg:sticky lg:top-6"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Druckvorschau</h2><p className="text-sm text-slate-500">QR oben, Text darunter</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">{labelW} × {labelH} mm</span></div>
  <div className="mt-5 rounded-2xl bg-slate-100 p-5"><div className="mx-auto overflow-hidden rounded-lg border bg-white p-3 shadow-sm" style={{width:"min(100%, 300px)",aspectRatio:labelW+"/"+labelH}}>{firstPreview&&qrCol?<div className={"flex h-full flex-col "+(textAlign==="center"?"items-center":textAlign==="right"?"items-end":"items-start")+" text-"+textAlign}>{previewQr?<img src={previewQr} alt="QR Vorschau" style={{width:Math.min(220,Math.max(50,qrSize*2.2)),marginTop:Math.max(0,qrTop/2+qrYOffset/2),transform:`translateX(${qrXOffset*2}px)`}} className="h-auto object-contain"/>:<div className="text-sm text-slate-400">QR wird geladen …</div>}<div className="w-full break-words text-sm" style={{marginTop:textGap*2.834645669/2,fontSize:titleSize,fontWeight:boldTitle?700:400,transform:`translate(${textXOffset*2}px, ${-textYOffset*2}px)`}}>{String(firstPreview[qrCol]??"")}</div>{showName&&nameCol&&<div className="w-full break-words text-slate-600" style={{fontSize:detailSize}}>{String(firstPreview[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="w-full break-words text-slate-500" style={{fontSize:detailSize}}>{String(firstPreview[locationCol]??"")}</div>}</div>:<div className="flex h-full items-center justify-center text-sm text-slate-400">Excel-Datei hochladen</div>}</div></div>
  {preview.length>0&&<div className="mt-5"><div className="mb-2 text-sm font-semibold">Weitere Datensätze</div><div className="space-y-2">{preview.slice(1).map((row,i)=><div key={i} className="rounded-xl border p-3 text-sm"><div className="font-bold">{String(row[qrCol]??"")}</div>{showName&&nameCol&&<div className="text-slate-600">{String(row[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="text-slate-500">{String(row[locationCol]??"")}</div>}</div>)}</div></div>}
