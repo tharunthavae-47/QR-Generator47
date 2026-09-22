@@ -73,7 +73,7 @@ export default function Home(){
          if(showLocation&&locationCol){const t=String(row[locationCol]??"").slice(0,60);page.drawText(t,{x:textX(x,mm(labelW),textAlign,t,regular,detailSize),y:ty,size:detailSize,font:regular,maxWidth:mm(labelW)-mm(10)})}
        }
      }
-     const bytes=await pdf.save(); const blob=new Blob([bytes],{type:"application/pdf"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.style.display="none"; a.href=url; a.download="QR-Generator47-Etiketten.pdf"; document.body.appendChild(a); a.click(); setTimeout(()=>{a.remove(); URL.revokeObjectURL(url)},1500); setMessage("PDF fertig – "+rows.length+" QR-Etiketten.")
+     const bytes=await pdf.save(); const safeBytes = new Uint8Array(bytes); const blob=new Blob([safeBytes.buffer],{type:"application/pdf"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.style.display="none"; a.href=url; a.download="QR-Generator47-Etiketten.pdf"; document.body.appendChild(a); a.click(); setTimeout(()=>{a.remove(); URL.revokeObjectURL(url)},1500); setMessage("PDF fertig – "+rows.length+" QR-Etiketten.")
    }catch(e){console.error(e);setMessage("PDF-Erstellung fehlgeschlagen.")}finally{setBusy(false)}
  }
 
