@@ -15,7 +15,7 @@ export default function Home(){
 
  useEffect(()=>{let cancelled=false;if(!firstPreview||!qrCol){setPreviewQr("");return;}const value=String(firstPreview[qrCol]??"");if(!value){setPreviewQr("");return;}QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"}).then(url=>{if(!cancelled)setPreviewQr(url)}).catch(()=>{if(!cancelled)setPreviewQr("")});return()=>{cancelled=true}},[firstPreview,qrCol]);
 
- function selectPreset(value:string){setLabelPreset(value);const p=presets.find(x=>x.name===value);if(p){setLabelW(p.w);setLabelH(p.h);setCols(1);if(value==="A4"){setQrSize(190);setQrTop(20);setQrXOffset(0);setQrYOffset(0);setTextGap(5)}}}
+ function selectPreset(value:string){setLabelPreset(value);const p=presets.find(x=>x.name===value);if(p){setLabelW(p.w);setLabelH(p.h);setCols(1);if(value==="A4"){setQrSize(110);setQrTop(20);setQrXOffset(0);setQrYOffset(0);setTextGap(5)}}}
  async function load(file:File){const valid=/\.(xlsx|xls|csv)$/i.test(file.name);if(!valid){setMessage("Bitte eine Excel- oder CSV-Datei auswählen.");return}try{const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:"array"});const sheet=wb.Sheets[wb.SheetNames[0]];const json=XLSX.utils.sheet_to_json<Row>(sheet,{defval:""});const hs=json.length?Object.keys(json[0]):[];setRows(json);setHeaders(hs);setQrCol(hs[0]||"");setNameCol(hs[1]||"");setLocationCol(hs[2]||"");setMessage(json.length+" Datensätze geladen: "+file.name)}catch{setMessage("Excel-Datei konnte nicht gelesen werden.")}}
  function onDrop(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();setDragging(false);const file=e.dataTransfer.files?.[0];if(file)load(file)}
  function onDragOver(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="copy";setDragging(true)}
@@ -73,7 +73,7 @@ export default function Home(){
          if(showLocation&&locationCol){const t=String(row[locationCol]??"").slice(0,60);page.drawText(t,{x:textX(x,mm(labelW),textAlign,t,regular,detailSize),y:ty,size:detailSize,font:regular,maxWidth:mm(labelW)-mm(10)})}
        }
      }
-     const bytes=await pdf.save(),safeBytes=new Uint8Array(bytes),blob=new Blob([safeBytes.buffer],{type:"application/pdf"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="QR-Generator47-Etiketten.pdf";a.click();URL.revokeObjectURL(url);setMessage("PDF fertig – "+rows.length+" QR-Etiketten.")
+     const bytes=await pdf.save(); const blob=new Blob([bytes],{type:"application/pdf"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.style.display="none"; a.href=url; a.download="QR-Generator47-Etiketten.pdf"; document.body.appendChild(a); a.click(); setTimeout(()=>{a.remove(); URL.revokeObjectURL(url)},1500); setMessage("PDF fertig – "+rows.length+" QR-Etiketten.")
    }catch(e){console.error(e);setMessage("PDF-Erstellung fehlgeschlagen.")}finally{setBusy(false)}
  }
 
