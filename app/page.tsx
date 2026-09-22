@@ -15,7 +15,7 @@ export default function Home(){
 
  useEffect(()=>{let cancelled=false;if(!firstPreview||!qrCol){setPreviewQr("");return;}const value=String(firstPreview[qrCol]??"");if(!value){setPreviewQr("");return;}QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"}).then(url=>{if(!cancelled)setPreviewQr(url)}).catch(()=>{if(!cancelled)setPreviewQr("")});return()=>{cancelled=true}},[firstPreview,qrCol]);
 
- function selectPreset(value:string){setLabelPreset(value);const p=presets.find(x=>x.name===value);if(p){setLabelW(p.w);setLabelH(p.h);setCols(1)}}
+ function selectPreset(value:string){setLabelPreset(value);const p=presets.find(x=>x.name===value);if(p){setLabelW(p.w);setLabelH(p.h);setCols(1);if(value==="A4"){setQrSize(190);setQrTop(20);setQrXOffset(0);setQrYOffset(0);setTextGap(5)}}}
  async function load(file:File){const valid=/\.(xlsx|xls|csv)$/i.test(file.name);if(!valid){setMessage("Bitte eine Excel- oder CSV-Datei auswählen.");return}try{const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:"array"});const sheet=wb.Sheets[wb.SheetNames[0]];const json=XLSX.utils.sheet_to_json<Row>(sheet,{defval:""});const hs=json.length?Object.keys(json[0]):[];setRows(json);setHeaders(hs);setQrCol(hs[0]||"");setNameCol(hs[1]||"");setLocationCol(hs[2]||"");setMessage(json.length+" Datensätze geladen: "+file.name)}catch{setMessage("Excel-Datei konnte nicht gelesen werden.")}}
  function onDrop(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();setDragging(false);const file=e.dataTransfer.files?.[0];if(file)load(file)}
  function onDragOver(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="copy";setDragging(true)}
@@ -49,20 +49,20 @@ export default function Home(){
  function escapeHtml(value:string){return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/\x27/g,"&#039;")}
  async function makePdf(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
-   const pageW=mm(210),pageH=mm(297),margin=mm(10),gap=mm(4),perRow=Math.max(1,cols);
+   const pageW=mm(210),pageH=mm(297),isA4=labelW===210&&labelH===297,margin=isA4?0:mm(10),gap=isA4?0:mm(4),perRow=isA4?1:Math.max(1,cols);
    if(labelW*perRow+4*(perRow-1)>190){setMessage("Die Etiketten sind zu breit für A4. Bitte Breite oder Anzahl pro Zeile reduzieren.");return}
-   if(labelW>190||labelH>277){setMessage("Das Etikett ist größer als der bedruckbare A4-Bereich. Bitte ein kleineres Format wählen.");return}
+   if(!isA4&&(labelW>190||labelH>277)){setMessage("Das Etikett ist größer als der bedruckbare A4-Bereich. Bitte ein kleineres Format wählen.");return}
    if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
    setBusy(true);setMessage("PDF wird erstellt …");
    try{
      const pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
-     const rowsPerPage=Math.max(1,Math.floor((pageH-margin*2+gap)/(mm(labelH)+gap))),maxPerPage=perRow*rowsPerPage;
+     const rowsPerPage=isA4?1:Math.max(1,Math.floor((pageH-margin*2+gap)/(mm(labelH)+gap))),maxPerPage=perRow*rowsPerPage;
      for(let start=0;start<rows.length;start+=maxPerPage){
        const page=pdf.addPage([pageW,pageH]);
        for(let i=0;i<Math.min(maxPerPage,rows.length-start);i++){
          const row=rows[start+i],c=i%perRow,r=Math.floor(i/perRow),x=margin+c*(mm(labelW)+gap),y=pageH-margin-(r+1)*mm(labelH)-r*gap,value=String(row[qrCol]??"");if(!value)continue;
          const png=await QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"}),img=await pdf.embedPng(png),qr=mm(qrSize);
-         page.drawRectangle({x,y,width:mm(labelW),height:mm(labelH),borderColor:rgb(.78,.84,.87),borderWidth:.7});
+         if(!isA4)page.drawRectangle({x,y,width:mm(labelW),height:mm(labelH),borderColor:rgb(.78,.84,.87),borderWidth:.7});
          const drawQrX=x+(mm(labelW)-qr)/2+mm(qrXOffset),drawQrY=y+mm(labelH)-qr-mm(qrTop)+mm(qrYOffset);
          page.drawImage(img,{x:drawQrX,y:drawQrY,width:qr,height:qr});
          let ty=drawQrY-mm(textGap)-titleSize;
@@ -109,5 +109,5 @@ export default function Home(){
  <aside className="card h-fit p-6 lg:sticky lg:top-6"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Druckvorschau</h2><p className="text-sm text-slate-500">QR oben, Text darunter</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">{labelW} × {labelH} mm</span></div>
  <div className="mt-5 rounded-2xl bg-slate-100 p-5"><div className="mx-auto overflow-hidden rounded-lg border bg-white p-3 shadow-sm" style={{width:"min(100%, 300px)",aspectRatio:labelW+"/"+labelH}}>{firstPreview&&qrCol?<div className={"flex h-full flex-col "+(textAlign==="center"?"items-center":textAlign==="right"?"items-end":"items-start")+" text-"+textAlign}>{previewQr?<img src={previewQr} alt="QR Vorschau" style={{width:Math.min(220,Math.max(50,qrSize*2.2)),marginTop:Math.max(0,qrTop/2+qrYOffset/2),transform:`translateX(${qrXOffset*2}px)`}} className="h-auto object-contain"/>:<div className="text-sm text-slate-400">QR wird geladen …</div>}<div className="w-full break-words text-sm" style={{marginTop:textGap*2.834645669/2,fontSize:titleSize,fontWeight:boldTitle?700:400,transform:`translate(${textXOffset*2}px, ${-textYOffset*2}px)`}}>{String(firstPreview[qrCol]??"")}</div>{showName&&nameCol&&<div className="w-full break-words text-slate-600" style={{fontSize:detailSize}}>{String(firstPreview[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="w-full break-words text-slate-500" style={{fontSize:detailSize}}>{String(firstPreview[locationCol]??"")}</div>}</div>:<div className="flex h-full items-center justify-center text-sm text-slate-400">Excel-Datei hochladen</div>}</div></div>
  {preview.length>0&&<div className="mt-5"><div className="mb-2 text-sm font-semibold">Weitere Datensätze</div><div className="space-y-2">{preview.slice(1).map((row,i)=><div key={i} className="rounded-xl border p-3 text-sm"><div className="font-bold">{String(row[qrCol]??"")}</div>{showName&&nameCol&&<div className="text-slate-600">{String(row[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="text-slate-500">{String(row[locationCol]??"")}</div>}</div>)}</div></div>}
- <div className="mt-6 rounded-xl bg-slate-50 p-4 text-xs text-slate-500">Die Excel-Daten werden vollständig im Browser verarbeitet. Es ist kein Backend und keine Datenbank nötig.</div></aside></div></main>
+ <div className="mt-6 rounded-xl bg-slate-50 p-4 text-xs text-slate-500">A4: Der QR-Code wird standardmäßig mit 190 mm Größe groß und nahezu über das ganze Blatt gedruckt. Die Excel-Daten werden vollständig im Browser verarbeitet. Es ist kein Backend und keine Datenbank nötig.</div></aside></div></main>
 }
