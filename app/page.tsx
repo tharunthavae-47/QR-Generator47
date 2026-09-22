@@ -50,7 +50,7 @@ export default function Home(){
  async function makePdf(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
    const pageW=mm(210),pageH=mm(297),isA4=labelW===210&&labelH===297,margin=isA4?0:mm(10),gap=isA4?0:mm(4),perRow=isA4?1:Math.max(1,cols);
-   if(labelW*perRow+4*(perRow-1)>190){setMessage("Die Etiketten sind zu breit für A4. Bitte Breite oder Anzahl pro Zeile reduzieren.");return}
+   if(!isA4 && labelW*perRow+4*(perRow-1)>190){setMessage("Die Etiketten sind zu breit für A4. Bitte Breite oder Anzahl pro Zeile reduzieren.");return}
    if(!isA4&&(labelW>190||labelH>277)){setMessage("Das Etikett ist größer als der bedruckbare A4-Bereich. Bitte ein kleineres Format wählen.");return}
    if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
    setBusy(true);setMessage("PDF wird erstellt …");
