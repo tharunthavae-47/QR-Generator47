@@ -1,0 +1,3 @@
+@import "tailwindcss";
+
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f4f8fb;color:#10212b;font-family:Arial,Helvetica,sans-serif}.card{background:white;border:1px solid #dce8ee;border-radius:18px;box-shadow:0 8px 30px rgba(16,33,43,.06)}
