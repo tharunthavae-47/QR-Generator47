@@ -45,7 +45,9 @@ export default function Home(){
      printWindow.document.open();
      printWindow.document.write("<!doctype html><html><head><title>QR Generator47 – Etiketten</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;width:210mm;background:#fff}body{font-family:Arial,sans-serif}.page{position:relative;width:210mm;height:297mm;margin:0;padding:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden;break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}.label{position:relative;flex:none;overflow:hidden;border:0 !important;box-shadow:none !important}.qr{position:absolute;object-fit:contain}.texts{position:absolute;left:5mm;right:5mm;top:0;line-height:1.15}.title,.detail{overflow-wrap:anywhere}.detail{margin-top:2mm}@media print{html,body{width:210mm;margin:0;padding:0}.page{width:210mm;height:297mm;break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}.label{border:0 !important;box-shadow:none !important}}</style></head><body>"+validItems.join("")+"</body></html>");
      printWindow.document.close();
-     setMessage("Druckdialog geöffnet – jeder QR-Code wird auf genau einer A4-Seite gedruckt.");
+     printWindow.focus();
+     setTimeout(()=>{try{printWindow.print()}catch(e){console.error(e)}},500);
+     setMessage("Druckdialog wird geöffnet – jeder QR-Code wird auf genau einer A4-Seite gedruckt.");
    }catch(e){console.error(e);printWindow.close();setMessage("Drucken konnte nicht vorbereitet werden.")}
  }
  async function makePdf(){
