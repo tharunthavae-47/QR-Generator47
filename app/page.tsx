@@ -31,7 +31,7 @@ export default function Home(){
    setBusy(true);setMessage("PDF wird erstellt …");
    try{
      const pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
-     const rowsPerPage=Math.max(1,Math.floor((pageH-margin*2+gap)/(mm(labelH)+gap))),maxPerPage=perRow*rowsPerPage);
+     const rowsPerPage=Math.max(1,Math.floor((pageH-margin*2+gap)/(mm(labelH)+gap))),maxPerPage=perRow*rowsPerPage;
      for(let start=0;start<rows.length;start+=maxPerPage){
        const page=pdf.addPage([pageW,pageH]);
        for(let i=0;i<Math.min(maxPerPage,rows.length-start);i++){
@@ -42,7 +42,7 @@ export default function Home(){
          page.drawImage(img,{x:qrX,y:qrY,width:qr,height:qr});
          let ty=qrY-mm(textGap);
          const titleFont=boldTitle?bold:regular,title=value.slice(0,60);
-         page.drawText(title,{x:textX(x,mm(labelW),textAlign,title,titleFont,titleSize?mm(0)+titleSize:titleSize),y:ty,size:titleSize,font:titleFont,maxWidth:mm(labelW)-mm(10)});
+         page.drawText(title,{x:textX(x,mm(labelW),textAlign,title,titleFont,titleSize),y:ty,size:titleSize,font:titleFont,maxWidth:mm(labelW)-mm(10)});
          ty-=mm(6);
          if(showName&&nameCol){const t=String(row[nameCol]??"").slice(0,60);page.drawText(t,{x:textX(x,mm(labelW),textAlign,t,regular,detailSize),y:ty,size:detailSize,font:regular,maxWidth:mm(labelW)-mm(10)});ty-=mm(5)}
          if(showLocation&&locationCol){const t=String(row[locationCol]??"").slice(0,60);page.drawText(t,{x:textX(x,mm(labelW),textAlign,t,regular,detailSize),y:ty,size:detailSize,font:regular,maxWidth:mm(labelW)-mm(10)})}
