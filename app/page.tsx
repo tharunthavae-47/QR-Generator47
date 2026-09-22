@@ -22,6 +22,7 @@ export default function Home(){
  function onDragLeave(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();setDragging(false)}
 
  function textX(x:number,w:number,align:"left"|"center"|"right",text:string,font:any,size:number){const tw=font.widthOfTextAtSize(text,size);if(align==="center")return x+(w-tw)/2;if(align==="right")return x+w-tw-mm(5);return x+mm(5)}
+ function escapeHtml(value:string){return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
  async function printLabels(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
    if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
