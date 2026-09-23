@@ -26,7 +26,7 @@ export default function Home(){
        setTitleSize(12);setDetailSize(7.5);setTextGap(8);setTextAlign("center");
      }
      if(value==="A4"){
-       setQrSize(45);setQrTop(10);setQrXOffset(0);setQrYOffset(0);
+       setQrSize(40);setQrTop(10);setQrXOffset(0);setQrYOffset(0);
        setTitleSize(30);setDetailSize(7.5);setTextGap(20);setTextAlign("center");
      }
    }
