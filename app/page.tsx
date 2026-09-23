@@ -66,20 +66,20 @@ export default function Home(){
  }
  async function makePdf(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
-   const pageW=mm(210),pageH=mm(297),isA4=labelW===210&&labelH===297,margin=isA4?0:mm(10),gap=isA4?0:mm(4),perRow=isA4?1:Math.max(1,cols);
+   const pageW=mm(210),pageH=mm(297),isA4=labelW===210&&labelH===297,marginX=isA4?0:(labelW===110&&labelH===110?mm(50):mm(10)),marginY=isA4?0:mm(10),gap=isA4?0:mm(4),perRow=isA4?1:Math.max(1,cols);
    if(!isA4 && labelW*perRow+4*(perRow-1)>190){setMessage("Die Etiketten sind zu breit für A4. Bitte Breite oder Anzahl pro Zeile reduzieren.");return}
    if(!isA4&&(labelW>190||labelH>277)){setMessage("Das Etikett ist größer als der bedruckbare A4-Bereich. Bitte ein kleineres Format wählen.");return}
    if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
    setBusy(true);setMessage("PDF wird erstellt …");
    try{
      const pdf=await PDFDocument.create(),regular=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
-     const rowsPerPage=isA4?1:Math.max(1,Math.floor((pageH-margin*2+gap)/(mm(labelH)+gap))),maxPerPage=perRow*rowsPerPage;
+     const rowsPerPage=isA4?1:Math.max(1,Math.floor((pageH-marginY*2+gap)/(mm(labelH)+gap))),maxPerPage=perRow*rowsPerPage;
      for(let start=0;start<rows.length;start+=maxPerPage){
        const page=pdf.addPage([pageW,pageH]);
        for(let i=0;i<Math.min(maxPerPage,rows.length-start);i++){
-         const row=rows[start+i],c=i%perRow,r=Math.floor(i/perRow),x=margin+c*(mm(labelW)+gap),y=pageH-margin-(r+1)*mm(labelH)-r*gap,value=String(row[qrCol]??"");if(!value)continue;
+         const row=rows[start+i],c=i%perRow,r=Math.floor(i/perRow),x=marginX+c*(mm(labelW)+gap),y=pageH-marginY-(r+1)*mm(labelH)-r*gap,value=String(row[qrCol]??"");if(!value)continue;
          const png=await QRCode.toDataURL(value,{width:1000,margin:1,errorCorrectionLevel:"M"}),img=await pdf.embedPng(png),qr=mm(qrSize);
-         if(!isA4)page.drawRectangle({x,y,width:mm(labelW),height:mm(labelH),borderColor:rgb(.78,.84,.87),borderWidth:.7});
+         if(!isA4 && !(labelW===110&&labelH===110))page.drawRectangle({x,y,width:mm(labelW),height:mm(labelH),borderColor:rgb(.78,.84,.87),borderWidth:.7});
          const drawQrX=x+(mm(labelW)-qr)/2+mm(qrXOffset),drawQrY=y+mm(labelH)-qr-mm(qrTop)+mm(qrYOffset);
          page.drawImage(img,{x:drawQrX,y:drawQrY,width:qr,height:qr});
          let ty=drawQrY-mm(textGap)-titleSize;
