@@ -9,20 +9,34 @@ const mm=(n:number)=>n*2.834645669;
 const presets=[{name:"11 × 11 cm Etikette",w:110,h:110},{name:"10 × 10 cm Etikette",w:100,h:100},{name:"10 × 5 cm Etikette",w:100,h:50},{name:"7 × 5 cm Etikette",w:70,h:50},{name:"A4",w:210,h:297},{name:"Benutzerdefiniert",w:70,h:55}];
 
 export default function Home(){
- const [rows,setRows]=useState<Row[]>([]),[headers,setHeaders]=useState<string[]>([]),[qrCol,setQrCol]=useState(""),[labelPreset,setLabelPreset]=useState("11 × 11 cm Etikette"),[labelW,setLabelW]=useState(110),[labelH,setLabelH]=useState(110),[cols,setCols]=useState(1),[showName,setShowName]=useState(true),[nameCol,setNameCol]=useState(""),[showLocation,setShowLocation]=useState(true),[locationCol,setLocationCol]=useState(""),[qrSize,setQrSize]=useState(65),[qrTop,setQrTop]=useState(8),[qrXOffset,setQrXOffset]=useState(0),[qrYOffset,setQrYOffset]=useState(0),[textXOffset,setTextXOffset]=useState(0),[textYOffset,setTextYOffset]=useState(0),[titleSize,setTitleSize]=useState(9),[detailSize,setDetailSize]=useState(7.5),[textGap,setTextGap]=useState(6),[textAlign,setTextAlign]=useState<"left"|"center"|"right">("center"),[boldTitle,setBoldTitle]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[previewQr,setPreviewQr]=useState(""),[dragging,setDragging]=useState(false);
+ const [rows,setRows]=useState<Row[]>([]),[headers,setHeaders]=useState<string[]>([]),[qrCol,setQrCol]=useState(""),[labelPreset,setLabelPreset]=useState("11 × 11 cm Etikette"),[labelW,setLabelW]=useState(110),[labelH,setLabelH]=useState(110),[cols,setCols]=useState(1),[showName,setShowName]=useState(true),[nameCol,setNameCol]=useState(""),[showLocation,setShowLocation]=useState(true),[locationCol,setLocationCol]=useState(""),[qrSize,setQrSize]=useState(52),[qrTop,setQrTop]=useState(18),[qrXOffset,setQrXOffset]=useState(0),[qrYOffset,setQrYOffset]=useState(0),[textXOffset,setTextXOffset]=useState(0),[textYOffset,setTextYOffset]=useState(0),[titleSize,setTitleSize]=useState(12),[detailSize,setDetailSize]=useState(7.5),[textGap,setTextGap]=useState(8),[textAlign,setTextAlign]=useState<"left"|"center"|"right">("center"),[boldTitle,setBoldTitle]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[previewQr,setPreviewQr]=useState(""),[dragging,setDragging]=useState(false);
  const fileInput=useRef<HTMLInputElement>(null);
  const preview=useMemo(()=>rows.slice(0,6),[rows]),firstPreview=preview[0];
 
  useEffect(()=>{let cancelled=false;if(!firstPreview||!qrCol){setPreviewQr("");return;}const value=String(firstPreview[qrCol]??"");if(!value){setPreviewQr("");return;}QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"}).then(url=>{if(!cancelled)setPreviewQr(url)}).catch(()=>{if(!cancelled)setPreviewQr("")});return()=>{cancelled=true}},[firstPreview,qrCol]);
 
- function selectPreset(value:string){setLabelPreset(value);const p=presets.find(x=>x.name===value);if(p){setLabelW(p.w);setLabelH(p.h);setCols(1);if(value==="A4"){setQrSize(45);setQrTop(10);setQrXOffset(0);setQrYOffset(0);setTitleSize(30);setDetailSize(7.5);setTextGap(20);setTextAlign("center")}}}
+ function selectPreset(value:string){
+   setLabelPreset(value);
+   const p=presets.find(x=>x.name===value);
+   if(p){
+     setLabelW(p.w);setLabelH(p.h);setCols(1);
+     if(value==="11 × 11 cm Etikette"){
+       setQrSize(52);setQrTop(18);setQrXOffset(0);setQrYOffset(0);
+       setTitleSize(12);setDetailSize(7.5);setTextGap(8);setTextAlign("center");
+     }
+     if(value==="A4"){
+       setQrSize(45);setQrTop(10);setQrXOffset(0);setQrYOffset(0);
+       setTitleSize(30);setDetailSize(7.5);setTextGap(20);setTextAlign("center");
+     }
+   }
+ }
  async function load(file:File){const valid=/\.(xlsx|xls|csv)$/i.test(file.name);if(!valid){setMessage("Bitte eine Excel- oder CSV-Datei auswählen.");return}try{const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:"array"});const sheet=wb.Sheets[wb.SheetNames[0]];const json=XLSX.utils.sheet_to_json<Row>(sheet,{defval:""});const hs=json.length?Object.keys(json[0]):[];setRows(json);setHeaders(hs);setQrCol(hs[0]||"");setNameCol(hs[1]||"");setLocationCol(hs[2]||"");setMessage(json.length+" Datensätze geladen: "+file.name)}catch{setMessage("Excel-Datei konnte nicht gelesen werden.")}}
  function onDrop(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();setDragging(false);const file=e.dataTransfer.files?.[0];if(file)load(file)}
  function onDragOver(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="copy";setDragging(true)}
  function onDragLeave(e:React.DragEvent<HTMLLabelElement>){e.preventDefault();e.stopPropagation();setDragging(false)}
 
  function textX(x:number,w:number,align:"left"|"center"|"right",text:string,font:any,size:number){const tw=font.widthOfTextAtSize(text,size);if(align==="center")return x+(w-tw)/2;if(align==="right")return x+w-tw-mm(5);return x+mm(5)}
- function escapeHtml(value:string){return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+ function escapeHtml(value:string){return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;")}
  async function printLabels(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
    if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
@@ -32,22 +46,22 @@ export default function Home(){
    try{
      const items=await Promise.all(rows.map(async row=>{
        const value=String(row[qrCol]??"");if(!value)return "";
-       const qr=await QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"});
+       const qr=await QRCode.toDataURL(value,{width:1000,margin:1,errorCorrectionLevel:"M"});
        const name=showName&&nameCol?String(row[nameCol]??""):"";
        const location=showLocation&&locationCol?String(row[locationCol]??""):"";
        const align=textAlign==="left"?"left":textAlign==="right"?"right":"center";
        const qrTopPx=Math.max(0,qrTop+qrYOffset);
        const qrLeft="calc(50% + "+qrXOffset+"mm)";
        const textTransform="translate("+textXOffset+"mm, "+textYOffset+"mm)";
-       return "<div class=\"page\"><div class=\"label\" style=\"width:"+labelW+"mm;height:"+labelH+"mm\"><img class=\"qr\" src=\""+qr+"\" style=\"width:"+qrSize+"mm;top:"+qrTopPx+"mm;left:"+qrLeft+";transform:translateX(-50%)\"/><div class=\"texts\" style=\"text-align:"+align+";transform:"+textTransform+";margin-top:"+((qrSize+qrTop+qrYOffset+textGap))+"mm\"><div class=\"title\" style=\"font-size:"+titleSize+"pt;font-weight:"+(boldTitle?700:400)+"\">"+escapeHtml(value.slice(0,60))+"</div>"+(name?"<div class=\"detail\" style=\"font-size:"+detailSize+"pt\">"+escapeHtml(name.slice(0,60))+"</div>":"")+(location?"<div class=\"detail\" style=\"font-size:"+detailSize+"pt\">"+escapeHtml(location.slice(0,60))+"</div>":"")+"</div></div></div>";
+       return "<div class=\"page\"><div class=\"label\" style=\"width:"+labelW+"mm;height:"+labelH+"mm\"><img class=\"qr\" src=\""+qr+"\" style=\"width:"+qrSize+"mm;top:"+qrTopPx+"mm;left:"+qrLeft+";transform:translateX(-50%)\"/><div class=\"texts\" style=\"text-align:"+align+";transform:"+textTransform+";top:"+((qrSize+qrTop+qrYOffset+textGap))+"mm\"><div class=\"title\" style=\"font-size:"+titleSize+"pt;font-weight:"+(boldTitle?700:400)+"\">"+escapeHtml(value.slice(0,60))+"</div>"+(name?"<div class=\"detail\" style=\"font-size:"+detailSize+"pt\">"+escapeHtml(name.slice(0,60))+"</div>":"")+(location?"<div class=\"detail\" style=\"font-size:"+detailSize+"pt\">"+escapeHtml(location.slice(0,60))+"</div>":"")+"</div></div></div>";
      }));
      const validItems=items.filter(Boolean);
      printWindow.document.open();
-     printWindow.document.write("<!doctype html><html><head><title>QR Generator47 – Etiketten</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;width:210mm;background:#fff}body{font-family:Arial,sans-serif}.page{position:relative;width:210mm;height:297mm;margin:0;padding:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden;break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}.label{position:relative;flex:none;overflow:hidden;border:0 !important;box-shadow:none !important}.qr{position:absolute;object-fit:contain}.texts{position:absolute;left:5mm;right:5mm;top:0;line-height:1.15}.title,.detail{overflow-wrap:anywhere}.detail{margin-top:2mm}@media print{html,body{width:210mm;margin:0;padding:0}.page{width:210mm;height:297mm;break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}.label{border:0 !important;box-shadow:none !important}}</style></head><body>"+validItems.join("")+"</body></html>");
+     printWindow.document.write("<!doctype html><html><head><title>QR Generator47 – Etiketten</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;width:210mm;background:#fff}body{font-family:Arial,sans-serif}.page{position:relative;width:210mm;height:297mm;margin:0;padding:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden;break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}.label{position:relative;flex:none;overflow:hidden;border:0 !important;box-shadow:none !important;margin-top:10mm}.qr{position:absolute;object-fit:contain;display:block}.texts{position:absolute;left:5mm;right:5mm;line-height:1.15}.title,.detail{overflow-wrap:anywhere}.detail{margin-top:2mm}@media print{html,body{width:210mm;margin:0;padding:0}.page{width:210mm;height:297mm;break-after:page;page-break-after:always}.page:last-child{break-after:auto;page-break-after:auto}.label{border:0 !important;box-shadow:none !important;margin-top:10mm}}</style></head><body>"+validItems.join("")+"</body></html>");
      printWindow.document.close();
      printWindow.focus();
-     setTimeout(()=>{try{printWindow.print()}catch(e){console.error(e)}},500);
-     setMessage("Druckdialog wird geöffnet – jeder QR-Code wird auf genau einer A4-Seite gedruckt.");
+     setTimeout(()=>{try{printWindow.print()}catch(e){console.error(e)}},700);
+     setMessage("Druckdialog wird geöffnet – 11 × 11 cm wird in Originalgröße auf A4 platziert.");
    }catch(e){console.error(e);printWindow.close();setMessage("Drucken konnte nicht vorbereitet werden.")}
  }
  async function makePdf(){
@@ -64,7 +78,7 @@ export default function Home(){
        const page=pdf.addPage([pageW,pageH]);
        for(let i=0;i<Math.min(maxPerPage,rows.length-start);i++){
          const row=rows[start+i],c=i%perRow,r=Math.floor(i/perRow),x=margin+c*(mm(labelW)+gap),y=pageH-margin-(r+1)*mm(labelH)-r*gap,value=String(row[qrCol]??"");if(!value)continue;
-         const png=await QRCode.toDataURL(value,{width:500,margin:1,errorCorrectionLevel:"M"}),img=await pdf.embedPng(png),qr=mm(qrSize);
+         const png=await QRCode.toDataURL(value,{width:1000,margin:1,errorCorrectionLevel:"M"}),img=await pdf.embedPng(png),qr=mm(qrSize);
          if(!isA4)page.drawRectangle({x,y,width:mm(labelW),height:mm(labelH),borderColor:rgb(.78,.84,.87),borderWidth:.7});
          const drawQrX=x+(mm(labelW)-qr)/2+mm(qrXOffset),drawQrY=y+mm(labelH)-qr-mm(qrTop)+mm(qrYOffset);
          page.drawImage(img,{x:drawQrX,y:drawQrY,width:qr,height:qr});
@@ -76,7 +90,7 @@ export default function Home(){
          if(showLocation&&locationCol){const t=String(row[locationCol]??"").slice(0,60);page.drawText(t,{x:textX(x,mm(labelW),textAlign,t,regular,detailSize),y:ty,size:detailSize,font:regular,maxWidth:mm(labelW)-mm(10)})}
        }
      }
-     const bytes=await pdf.save(); const safeBytes = new Uint8Array(bytes); const blob=new Blob([safeBytes.buffer],{type:"application/pdf"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.style.display="none"; a.href=url; a.download="QR-Generator47-Etiketten.pdf"; document.body.appendChild(a); a.click(); setTimeout(()=>{a.remove(); URL.revokeObjectURL(url)},1500); setMessage("PDF fertig – "+rows.length+" QR-Etiketten.")
+     const bytes=await pdf.save();const safeBytes=new Uint8Array(bytes);const blob=new Blob([safeBytes.buffer],{type:"application/pdf"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.style.display="none";a.href=url;a.download="QR-Generator47-Etiketten.pdf";document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);setMessage("PDF fertig – "+rows.length+" QR-Etiketten.");
    }catch(e){console.error(e);setMessage("PDF-Erstellung fehlgeschlagen.")}finally{setBusy(false)}
  }
 
@@ -112,5 +126,5 @@ export default function Home(){
  <aside className="card h-fit p-6 lg:sticky lg:top-6"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Druckvorschau</h2><p className="text-sm text-slate-500">QR oben, Text darunter</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">{labelW} × {labelH} mm</span></div>
  <div className="mt-5 rounded-2xl bg-slate-100 p-5"><div className="mx-auto overflow-hidden rounded-lg border bg-white p-3 shadow-sm" style={{width:"min(100%, 300px)",aspectRatio:labelW+"/"+labelH}}>{firstPreview&&qrCol?<div className={"flex h-full flex-col "+(textAlign==="center"?"items-center":textAlign==="right"?"items-end":"items-start")+" text-"+textAlign}>{previewQr?<img src={previewQr} alt="QR Vorschau" style={{width:Math.min(220,Math.max(50,qrSize*2.2)),marginTop:Math.max(0,qrTop/2+qrYOffset/2),transform:`translateX(${qrXOffset*2}px)`}} className="h-auto object-contain"/>:<div className="text-sm text-slate-400">QR wird geladen …</div>}<div className="w-full break-words text-sm" style={{marginTop:textGap*2.834645669/2,fontSize:titleSize,fontWeight:boldTitle?700:400,transform:`translate(${textXOffset*2}px, ${-textYOffset*2}px)`}}>{String(firstPreview[qrCol]??"")}</div>{showName&&nameCol&&<div className="w-full break-words text-slate-600" style={{fontSize:detailSize}}>{String(firstPreview[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="w-full break-words text-slate-500" style={{fontSize:detailSize}}>{String(firstPreview[locationCol]??"")}</div>}</div>:<div className="flex h-full items-center justify-center text-sm text-slate-400">Excel-Datei hochladen</div>}</div></div>
  {preview.length>0&&<div className="mt-5"><div className="mb-2 text-sm font-semibold">Weitere Datensätze</div><div className="space-y-2">{preview.slice(1).map((row,i)=><div key={i} className="rounded-xl border p-3 text-sm"><div className="font-bold">{String(row[qrCol]??"")}</div>{showName&&nameCol&&<div className="text-slate-600">{String(row[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="text-slate-500">{String(row[locationCol]??"")}</div>}</div>)}</div></div>}
- <div className="mt-6 rounded-xl bg-slate-50 p-4 text-xs text-slate-500">A4: Der QR-Code wird standardmäßig mit 190 mm Größe groß und nahezu über das ganze Blatt gedruckt. Die Excel-Daten werden vollständig im Browser verarbeitet. Es ist kein Backend und keine Datenbank nötig.</div></aside></div></main>
+ <div className="mt-6 rounded-xl bg-slate-50 p-4 text-xs text-slate-500">11 × 11 cm: Das Etikett wird beim Direktdruck exakt 110 × 110 mm groß auf A4 platziert. Keine automatische Verkleinerung des Etiketts.</div></aside></div></main>
 }
