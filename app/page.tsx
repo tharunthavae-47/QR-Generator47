@@ -71,29 +71,75 @@ export default function Home(){
    if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
    setBusy(true);setMessage("Word-Datei wird erstellt …");
    try{
-     const children:any[]=[];
-     const isA4=labelW===210&&labelH===297;
-     const pageW=210, pageH=297;
+     const sections:any[]=[];
+     const pageW=210,pageH=297;
+     const twipsPerMm=56.6929;
+     const alignment=textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER;
+     const labelLeft=labelW===210&&labelH===297?0:(labelW===110&&labelH===110?50:(pageW-labelW)/2);
+     const labelTop=labelW===210&&labelH===297?0:10;
+     const leftMargin=labelLeft*twipsPerMm;
+     const rightMargin=Math.max(0,(pageW-labelLeft-labelW)*twipsPerMm);
      for(let index=0;index<rows.length;index++){
        const row=rows[index],value=String(row[qrCol]??"");if(!value)continue;
        const qrData=await QRCode.toDataURL(value,{width:1200,margin:1,errorCorrectionLevel:"M"});
-       const base64=qrData.split(",")[1];
-       const binary=atob(base64),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+       const base64=qrData.split(",")[1],binary=atob(base64),bytes=new Uint8Array(binary.length);
+       for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
        const name=showName&&nameCol?String(row[nameCol]??""):"";
        const location=showLocation&&locationCol?String(row[locationCol]??""):"";
-       const qrX=isA4?(pageW-qrSize)/2+qrXOffset:(pageW-labelW)/2+(labelW-qrSize)/2+qrXOffset;
-       const qrY=isA4?qrTop+qrYOffset:10+qrTop+qrYOffset;
-       const textY=qrY+qrSize+textGap+textYOffset;
-       const image=new ImageRun({data:bytes,type:"png",transformation:{width:qrSize*96/25.4,height:qrSize*96/25.4},floating:{horizontalPosition:{relative:HorizontalPositionRelativeFrom.PAGE,offset:qrX*36000},verticalPosition:{relative:VerticalPositionRelativeFrom.PAGE,offset:qrY*36000},wrap:{type:0}}});
-       children.push(new Paragraph({children:[image],spacing:{before:0,after:0,line:0}}));
-       children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:Math.max(0,textY)*56.6929,after:0},indent:{left:0,right:0},children:[new TextRun({text:value.slice(0,60),bold:boldTitle,size:titleSize*2})]}));
-       if(name)children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:40,after:0},children:[new TextRun({text:name.slice(0,60),size:detailSize*2})]}));
-       if(location)children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:20,after:0},children:[new TextRun({text:location.slice(0,60),size:detailSize*2})]}));
-       if(index<rows.length-1)children.push(new Paragraph({pageBreakBefore:true,children:[]}));
+       const qrTopAbsolute=labelTop+qrTop+qrYOffset;
+       const qrImage=new ImageRun({
+         data:bytes,
+         type:"png",
+         transformation:{width:qrSize*96/25.4,height:qrSize*96/25.4}
+       });
+       const textIndent=textXOffset>0?{left:textXOffset*twipsPerMm}:{right:(-textXOffset)*twipsPerMm};
+       const children:any[]=[
+         new Paragraph({
+           alignment:AlignmentType.CENTER,
+           spacing:{before:Math.max(0,qrTopAbsolute)*twipsPerMm,after:Math.max(0,textGap)*twipsPerMm,line:0},
+           children:[qrImage]
+         }),
+         new Paragraph({
+           alignment,
+           spacing:{before:0,after:0,line:0},
+           indent:textIndent,
+           children:[new TextRun({text:value.slice(0,60),bold:boldTitle,size:titleSize*2,font:"Arial"})]
+         })
+       ];
+       if(name)children.push(new Paragraph({
+         alignment,
+         spacing:{before:40,after:0,line:0},
+         indent:textIndent,
+         children:[new TextRun({text:name.slice(0,60),size:detailSize*2,font:"Arial"})]
+       }));
+       if(location)children.push(new Paragraph({
+         alignment,
+         spacing:{before:20,after:0,line:0},
+         indent:textIndent,
+         children:[new TextRun({text:location.slice(0,60),size:detailSize*2,font:"Arial"})]
+       }));
+       sections.push({
+         properties:{
+           page:{
+             size:{width:pageW*twipsPerMm,height:pageH*twipsPerMm},
+             margin:{
+               top:Math.max(0,qrTopAbsolute)*twipsPerMm,
+               right:rightMargin,
+               bottom:0,
+               left:leftMargin
+             }
+           }
+         },
+         children
+       });
      }
-     const doc=new Document({sections:[{properties:{page:{size:{width:pageW*1440/25.4,height:pageH*1440/25.4},margin:{top:0,right:0,bottom:0,left:0}}},children}]});
-     const blob=await Packer.toBlob(doc);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.style.display="none";a.href=url;a.download="QR-Generator47-Etiketten.docx";document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);
-     setMessage("Word-Datei fertig – "+rows.length+" QR-Etiketten.");
+     const doc=new Document({sections});
+     const blob=await Packer.toBlob(doc);
+     const url=URL.createObjectURL(blob),a=document.createElement("a");
+     a.style.display="none";a.href=url;a.download="QR-Generator47-Etiketten.docx";
+     document.body.appendChild(a);a.click();
+     setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);
+     setMessage("Word-Datei fertig – "+sections.length+" QR-Etiketten.");
    }catch(e){console.error(e);setMessage("Word-Erstellung fehlgeschlagen.")}finally{setBusy(false)}
  }
  async function makePdf(){
