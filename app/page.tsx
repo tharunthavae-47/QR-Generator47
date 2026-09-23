@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun } from "docx";
 
 type Row = Record<string, string | number | boolean | null>;
 const mm=(n:number)=>n*2.834645669;
@@ -65,6 +66,36 @@ export default function Home(){
      setMessage(labelW===210&&labelH===297 ? "Druckdialog wird geöffnet – echtes A4-Layout. Der QR-Code wird exakt an seiner A4-Position gedruckt." : "Druckdialog wird geöffnet – Etikett wird in Originalgröße gedruckt.");
    }catch(e){console.error(e);printWindow.close();setMessage("Drucken konnte nicht vorbereitet werden.")}
  }
+ async function makeWord(){
+   if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
+   if(qrSize>Math.min(labelW-10,labelH-25)){setMessage("Der QR-Code ist für dieses Etikett zu groß.");return}
+   setBusy(true);setMessage("Word-Datei wird erstellt …");
+   try{
+     const children:any[]=[];
+     const isA4=labelW===210&&labelH===297;
+     const pageW=210, pageH=297;
+     for(let index=0;index<rows.length;index++){
+       const row=rows[index],value=String(row[qrCol]??"");if(!value)continue;
+       const qrData=await QRCode.toDataURL(value,{width:1200,margin:1,errorCorrectionLevel:"M"});
+       const base64=qrData.split(",")[1];
+       const binary=atob(base64),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+       const name=showName&&nameCol?String(row[nameCol]??""):"";
+       const location=showLocation&&locationCol?String(row[locationCol]??""):"";
+       const qrX=isA4?(pageW-qrSize)/2+qrXOffset:(pageW-labelW)/2+(labelW-qrSize)/2+qrXOffset;
+       const qrY=isA4?qrTop+qrYOffset:10+qrTop+qrYOffset;
+       const textY=qrY+qrSize+textGap+textYOffset;
+       const image=new ImageRun({data:bytes,type:"png",transformation:{width:mm(qrSize)*2.834645669,height:mm(qrSize)*2.834645669},floating:{horizontalPosition:{absolute:qrX*36000/25.4},verticalPosition:{absolute:qrY*36000/25.4},wrap:{type:"none"}}});
+       children.push(new Paragraph({children:[image],spacing:{before:0,after:0,line:0}}));
+       children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:Math.max(0,textY-qrY-qrSize)*56.7,after:0},indent:{left:0,right:0},children:[new TextRun({text:value.slice(0,60),bold:boldTitle,size:titleSize*2})]}));
+       if(name)children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:40,after:0},children:[new TextRun({text:name.slice(0,60),size:detailSize*2})]}));
+       if(location)children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:20,after:0},children:[new TextRun({text:location.slice(0,60),size:detailSize*2})]}));
+       if(index<rows.length-1)children.push(new Paragraph({pageBreakBefore:true,children:[]}));
+     }
+     const doc=new Document({sections:[{properties:{page:{width:pageW*36000/25.4,height:pageH*36000/25.4,margin:{top:0,right:0,bottom:0,left:0}}},children}]});
+     const blob=await Packer.toBlob(doc);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.style.display="none";a.href=url;a.download="QR-Generator47-Etiketten.docx";document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);
+     setMessage("Word-Datei fertig – "+rows.length+" QR-Etiketten.");
+   }catch(e){console.error(e);setMessage("Word-Erstellung fehlgeschlagen.")}finally{setBusy(false)}
+ }
  async function makePdf(){
    if(!rows.length||!qrCol){setMessage("Bitte Excel-Datei und QR-Spalte auswählen.");return}
    const pageW=mm(210),pageH=mm(297),isA4=labelW===210&&labelH===297,marginX=isA4?0:(labelW===110&&labelH===110?mm(50):mm(10)),marginY=isA4?0:mm(10),gap=isA4?0:mm(4),perRow=isA4?1:Math.max(1,cols);
@@ -123,7 +154,7 @@ export default function Home(){
  <label className="text-sm font-semibold">Name-Spalte<select value={nameCol} onChange={e=>setNameCol(e.target.value)} className="mt-2 w-full rounded-xl border p-3 font-normal">{headers.map(h=><option key={h}>{h}</option>)}</select></label>
  <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={showLocation} onChange={e=>setShowLocation(e.target.checked)}/> Standort anzeigen</label>
  <label className="text-sm font-semibold">Standort-Spalte<select value={locationCol} onChange={e=>setLocationCol(e.target.value)} className="mt-2 w-full rounded-xl border p-3 font-normal">{headers.map(h=><option key={h}>{h}</option>)}</select></label>
- </div><div className="mt-7 grid gap-3 sm:grid-cols-2"><button disabled={busy} onClick={makePdf} className="w-full rounded-xl bg-sky-600 px-5 py-4 font-bold text-white hover:bg-sky-700 disabled:opacity-50">{busy?"PDF wird erstellt …":"📄 Druckfertiges PDF erstellen"}</button><button disabled={busy} onClick={printLabels} className="w-full rounded-xl bg-slate-900 px-5 py-4 font-bold text-white hover:bg-slate-800 disabled:opacity-50">🖨️ Direkt drucken</button></div></div>}</section>
+ </div><div className="mt-7 grid gap-3 sm:grid-cols-3"><button disabled={busy} onClick={makeWord} className="w-full rounded-xl bg-indigo-600 px-5 py-4 font-bold text-white hover:bg-indigo-700 disabled:opacity-50">📝 Word exportieren</button><button disabled={busy} onClick={makePdf} className="w-full rounded-xl bg-sky-600 px-5 py-4 font-bold text-white hover:bg-sky-700 disabled:opacity-50">{busy?"PDF wird erstellt …":"📄 Druckfertiges PDF erstellen"}</button><button disabled={busy} onClick={printLabels} className="w-full rounded-xl bg-slate-900 px-5 py-4 font-bold text-white hover:bg-slate-800 disabled:opacity-50">🖨️ Direkt drucken</button></div></div>}</section>
  <aside className="card h-fit p-6 lg:sticky lg:top-6"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Druckvorschau</h2><p className="text-sm text-slate-500">QR oben, Text darunter</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">{labelW} × {labelH} mm</span></div>
  <div className="mt-5 rounded-2xl bg-slate-100 p-5"><div className="mx-auto overflow-hidden rounded-lg border bg-white p-3 shadow-sm" style={{width:"min(100%, 300px)",aspectRatio:labelW+"/"+labelH}}>{firstPreview&&qrCol?<div className={"flex h-full flex-col "+(textAlign==="center"?"items-center":textAlign==="right"?"items-end":"items-start")+" text-"+textAlign}>{previewQr?<img src={previewQr} alt="QR Vorschau" style={{width:Math.min(220,Math.max(50,qrSize*2.2)),marginTop:Math.max(0,qrTop/2+qrYOffset/2),transform:`translateX(${qrXOffset*2}px)`}} className="h-auto object-contain"/>:<div className="text-sm text-slate-400">QR wird geladen …</div>}<div className="w-full break-words text-sm" style={{marginTop:textGap*2.834645669/2,fontSize:titleSize,fontWeight:boldTitle?700:400,transform:`translate(${textXOffset*2}px, ${-textYOffset*2}px)`}}>{String(firstPreview[qrCol]??"")}</div>{showName&&nameCol&&<div className="w-full break-words text-slate-600" style={{fontSize:detailSize}}>{String(firstPreview[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="w-full break-words text-slate-500" style={{fontSize:detailSize}}>{String(firstPreview[locationCol]??"")}</div>}</div>:<div className="flex h-full items-center justify-center text-sm text-slate-400">Excel-Datei hochladen</div>}</div></div>
  {preview.length>0&&<div className="mt-5"><div className="mb-2 text-sm font-semibold">Weitere Datensätze</div><div className="space-y-2">{preview.slice(1).map((row,i)=><div key={i} className="rounded-xl border p-3 text-sm"><div className="font-bold">{String(row[qrCol]??"")}</div>{showName&&nameCol&&<div className="text-slate-600">{String(row[nameCol]??"")}</div>}{showLocation&&locationCol&&<div className="text-slate-500">{String(row[locationCol]??"")}</div>}</div>)}</div></div>}
