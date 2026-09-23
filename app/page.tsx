@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun } from "docx";
+import { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun, HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom } from "docx";
 
 type Row = Record<string, string | number | boolean | null>;
 const mm=(n:number)=>n*2.834645669;
@@ -84,14 +84,14 @@ export default function Home(){
        const qrX=isA4?(pageW-qrSize)/2+qrXOffset:(pageW-labelW)/2+(labelW-qrSize)/2+qrXOffset;
        const qrY=isA4?qrTop+qrYOffset:10+qrTop+qrYOffset;
        const textY=qrY+qrSize+textGap+textYOffset;
-       const image=new ImageRun({data:bytes,type:"png",transformation:{width:mm(qrSize)*2.834645669,height:mm(qrSize)*2.834645669},floating:{horizontalPosition:{absolute:qrX*36000/25.4},verticalPosition:{absolute:qrY*36000/25.4},wrap:{type:"none"}}});
+       const image=new ImageRun({data:bytes,type:"png",transformation:{width:qrSize*96/25.4,height:qrSize*96/25.4},floating:{horizontalPosition:{relative:HorizontalPositionRelativeFrom.PAGE,offset:qrX*36000},verticalPosition:{relative:VerticalPositionRelativeFrom.PAGE,offset:qrY*36000},wrap:{type:"none"}}});
        children.push(new Paragraph({children:[image],spacing:{before:0,after:0,line:0}}));
-       children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:Math.max(0,textY-qrY-qrSize)*56.7,after:0},indent:{left:0,right:0},children:[new TextRun({text:value.slice(0,60),bold:boldTitle,size:titleSize*2})]}));
+       children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:Math.max(0,textY)*56.6929,after:0},indent:{left:0,right:0},children:[new TextRun({text:value.slice(0,60),bold:boldTitle,size:titleSize*2})]}));
        if(name)children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:40,after:0},children:[new TextRun({text:name.slice(0,60),size:detailSize*2})]}));
        if(location)children.push(new Paragraph({alignment:textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER,spacing:{before:20,after:0},children:[new TextRun({text:location.slice(0,60),size:detailSize*2})]}));
        if(index<rows.length-1)children.push(new Paragraph({pageBreakBefore:true,children:[]}));
      }
-     const doc=new Document({sections:[{properties:{page:{width:pageW*36000/25.4,height:pageH*36000/25.4,margin:{top:0,right:0,bottom:0,left:0}}},children}]});
+     const doc=new Document({sections:[{properties:{page:{width:pageW*1440/25.4,height:pageH*1440/25.4,margin:{top:0,right:0,bottom:0,left:0}}},children}]});
      const blob=await Packer.toBlob(doc);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.style.display="none";a.href=url;a.download="QR-Generator47-Etiketten.docx";document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1500);
      setMessage("Word-Datei fertig – "+rows.length+" QR-Etiketten.");
    }catch(e){console.error(e);setMessage("Word-Erstellung fehlgeschlagen.")}finally{setBusy(false)}
