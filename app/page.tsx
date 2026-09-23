@@ -72,13 +72,13 @@ export default function Home(){
    setBusy(true);setMessage("Word-Datei wird erstellt …");
    try{
      const sections:any[]=[];
-     const pageW=210,pageH=297;
-     const twipsPerMm=56.6929;
+     const pageW=210,pageH=297,twipsPerMm=56.6929;
      const alignment=textAlign==="left"?AlignmentType.LEFT:textAlign==="right"?AlignmentType.RIGHT:AlignmentType.CENTER;
      const labelLeft=labelW===210&&labelH===297?0:(labelW===110&&labelH===110?50:(pageW-labelW)/2);
      const labelTop=labelW===210&&labelH===297?0:10;
-     const leftMargin=labelLeft*twipsPerMm;
-     const rightMargin=Math.max(0,(pageW-labelLeft-labelW)*twipsPerMm);
+     const contentWidth=Math.max(20,labelW);
+     const textLeftIndent=textAlign==="left"?5+textXOffset:0;
+     const textRightIndent=textAlign==="right"?5-textXOffset:0;
      for(let index=0;index<rows.length;index++){
        const row=rows[index],value=String(row[qrCol]??"");if(!value)continue;
        const qrData=await QRCode.toDataURL(value,{width:1200,margin:1,errorCorrectionLevel:"M"});
@@ -86,48 +86,59 @@ export default function Home(){
        for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
        const name=showName&&nameCol?String(row[nameCol]??""):"";
        const location=showLocation&&locationCol?String(row[locationCol]??""):"";
-       const qrTopAbsolute=labelTop+qrTop+qrYOffset;
+       const qrY=Math.max(0,labelTop+qrTop+qrYOffset);
        const qrImage=new ImageRun({
          data:bytes,
          type:"png",
          transformation:{width:qrSize*96/25.4,height:qrSize*96/25.4}
        });
-       const textIndent=textXOffset>0?{left:textXOffset*twipsPerMm}:{right:(-textXOffset)*twipsPerMm};
+       const textYOffsetTwips=-textYOffset*twipsPerMm;
        const children:any[]=[
          new Paragraph({
            alignment:AlignmentType.CENTER,
-           spacing:{before:Math.max(0,qrTopAbsolute)*twipsPerMm,after:Math.max(0,textGap)*twipsPerMm,line:0},
+           indent:{left:labelLeft*twipsPerMm,right:(pageW-labelLeft-labelW)*twipsPerMm},
+           spacing:{before:qrY*twipsPerMm,after:Math.max(0,textGap)*twipsPerMm,line:0},
            children:[qrImage]
          }),
          new Paragraph({
            alignment,
-           spacing:{before:0,after:0,line:0},
-           indent:textIndent,
-           children:[new TextRun({text:value.slice(0,60),bold:boldTitle,size:titleSize*2,font:"Arial"})]
+           indent:{
+             left:(labelLeft+textLeftIndent)*twipsPerMm,
+             right:(pageW-labelLeft-labelW+textRightIndent)*twipsPerMm
+           },
+           spacing:{before:Math.max(0,textYOffsetTwips),after:0,line:0},
+           children:[new TextRun({
+             text:value.slice(0,60),
+             bold:boldTitle,
+             size:Math.max(4,titleSize)*2,
+             font:"Arial",
+             color:"000000"
+           })]
          })
        ];
        if(name)children.push(new Paragraph({
          alignment,
+         indent:{
+           left:(labelLeft+textLeftIndent)*twipsPerMm,
+           right:(pageW-labelLeft-labelW+textRightIndent)*twipsPerMm
+         },
          spacing:{before:40,after:0,line:0},
-         indent:textIndent,
-         children:[new TextRun({text:name.slice(0,60),size:detailSize*2,font:"Arial"})]
+         children:[new TextRun({text:name.slice(0,60),size:Math.max(4,detailSize)*2,font:"Arial",color:"000000"})]
        }));
        if(location)children.push(new Paragraph({
          alignment,
+         indent:{
+           left:(labelLeft+textLeftIndent)*twipsPerMm,
+           right:(pageW-labelLeft-labelW+textRightIndent)*twipsPerMm
+         },
          spacing:{before:20,after:0,line:0},
-         indent:textIndent,
-         children:[new TextRun({text:location.slice(0,60),size:detailSize*2,font:"Arial"})]
+         children:[new TextRun({text:location.slice(0,60),size:Math.max(4,detailSize)*2,font:"Arial",color:"000000"})]
        }));
        sections.push({
          properties:{
            page:{
              size:{width:pageW*twipsPerMm,height:pageH*twipsPerMm},
-             margin:{
-               top:Math.max(0,qrTopAbsolute)*twipsPerMm,
-               right:rightMargin,
-               bottom:0,
-               left:leftMargin
-             }
+             margin:{top:0,right:0,bottom:0,left:0}
            }
          },
          children
